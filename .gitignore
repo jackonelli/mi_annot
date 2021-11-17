@@ -1,0 +1,12 @@
+.mypy_cache
+.DS_Store
+/venv
+/logs
+/results
+*.html
+*.json
+*.yaml
+*.pyc
+__pycache__
+.vim
+.hypothesis

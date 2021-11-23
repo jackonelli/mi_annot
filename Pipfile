@@ -19,6 +19,7 @@ scipy = "*"
 matplotlib = "*"
 jupyter = "*"
 tikzplotlib = "*"
+ipykernel = "*"
 
 [requires]
 python_version = "3.8"

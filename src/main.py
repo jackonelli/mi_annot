@@ -3,7 +3,7 @@ from functools import partial
 import numpy as np
 import torch
 import torch.nn as torch_nn
-from frank_wolfe import pseudo_frank_wolfe
+from frank_wolfe import pseudo_frank_wolfe, example_f, example_grad, example_extreme_points
 
 
 def main():
@@ -12,7 +12,7 @@ def main():
     precisions = torch_nn.parameter.Parameter(torch.randn(xs.size()))
     obj = partial(objective_template, xs=xs, sigma_sq_k=1, sigma_sq_m=1)
     obj_grad = partial(objective_gradient, xs=xs, sigma_sq_k=1, sigma_sq_m=1)
-    pseudo_frank_wolfe =
+    pseudo_frank_wolfe(example_f, example_grad, example_extreme_points, torch.tensor([1, 0, 0]), 5)
 
 
 def gradient_descent(obj, initial_precisions, lr, num_iter):

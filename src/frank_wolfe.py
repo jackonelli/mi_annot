@@ -32,26 +32,6 @@ def term(alpha_k, _obj_fn, obj_grad_fn, _gamma, iter_):
     return iter_ > 5 or torch.allclose(grad_f, torch.zeros(grad_f.size(), dtype=grad_f.dtype))
 
 
-def example_extreme_points():
-    return torch.tensor([[1, 0, 0], [0, 1, 0], [0, 0, 20]]).T
-
-
-def example_f(x):
-    return 100 * x[0] ** 2 + x[1] ** 2 + (x[2] - 20) ** 2
-
-
-def example_opt_step_len(x, search_dir):
-    p_1, p_2, p_3 = search_dir
-    x_1, x_2, x_3 = x
-    num = 200 * p_1 * x_1 + 2 * p_2 * x_2 + 2 * p_3 * x_3 - 40 * p_3
-    den = -200 * p_1 ** 2 - 2 * p_2 ** 2 - 2 * p_3 ** 2
-    return num / den
-
-
-def example_grad(x):
-    return torch.tensor([200 * x[0], 2 * x[1], 2 * (x[2] - 20)]).reshape(x.size(0), 1)
-
-
 def isosceles_triangular_extreme_points(grad_f, budget, num_samples):
     extreme_points = _gen_extreme_points(budget, num_samples)
 

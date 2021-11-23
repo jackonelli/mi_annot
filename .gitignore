@@ -10,3 +10,5 @@
 __pycache__
 .vim
 .hypothesis
+# Jupyter
+.ipynb_checkpoints

@@ -1,5 +1,4 @@
 import torch
-from functools import partial
 
 
 def objective_template(precisions: torch.Tensor, xs: torch.Tensor, sigma_sq_k: float, sigma_sq_m: float):
@@ -20,11 +19,11 @@ def objective_gradient(precisions: torch.Tensor, xs: torch.Tensor, sigma_sq_k: f
     xs_elem_sq = xs ** 2
     num_samples = xs.size(0)
     term_1 = xs_elem_sq * precisions.sum() - xs_elem_sq * precisions
-    print(term_1)
     term_2 = xs_elem_sq.T @ precisions - xs_elem_sq * precisions
-    term_3 = num_samples / sigma_sq_m * xs_elem_sq
-    term_4 = num_samples / sigma_sq_k
-    return term_1 + term_2  # + term_3 + term_4
+    term_3 = xs_elem_sq.T @ precisions - xs_elem_sq * precisions
+    term_4 = num_samples / sigma_sq_m * xs_elem_sq
+    term_5 = num_samples / sigma_sq_k
+    return term_1 + term_2 - term_3 + term_4 + term_4
 
 
 def obj_matrix_form(precisions: torch.Tensor, xs: torch.Tensor, sigma_sq_k: float, sigma_sq_m: float):
@@ -55,6 +54,18 @@ def grad_fn(x):
 def extreme_points():
     return torch.tensor([[1, 0, 0], [0, 1, 0], [0, 0, 20]]).T
 
+def approx_step_len(alpha, search_dir, obj_fn, num_steps):
+    gammas = torch.linspace(0, 1, num_steps)
+    max_val = -1e9
+    max_gamma = 0.0
+    for gamma in gammas:
+        alpha_step = alpha + gamma * search_dir
+        tmp = obj_fn(alpha_step)
+        # print(f"gamma: {gamma}, fn: {tmp.item()}")
+        if tmp > max_val:
+            max_val = tmp
+            max_gamma = gamma
+    return max_gamma
 
 def opt_step_len(alpha, search_dir, quadr_mat, linear):
     scale = search_dir.T @ quadr_mat @ search_dir

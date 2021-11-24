@@ -1,31 +1,6 @@
 import torch
 
 
-def objective_template(precisions: torch.Tensor, xs: torch.Tensor, sigma_sq_k: float, sigma_sq_m: float):
-    xs_elem_sq = xs ** 2
-    num_samples = xs.size(0)
-    term_1 = (precisions * xs_elem_sq).sum() * precisions.sum()
-    print("term_1", term_1)
-    term_2 = num_samples / sigma_sq_m * (precisions * xs_elem_sq).sum()
-    print("term_2", term_2)
-    term_3 = num_samples / sigma_sq_k * precisions.sum()
-    print("term_3", term_3)
-    term_4 = ((precisions * xs).sum()) ** 2
-    print("term_4", term_4)
-    return term_1 + term_2 + term_3 - term_4
-
-
-def objective_gradient(precisions: torch.Tensor, xs: torch.Tensor, sigma_sq_k: float, sigma_sq_m: float):
-    xs_elem_sq = xs ** 2
-    num_samples = xs.size(0)
-    term_1 = xs_elem_sq * precisions.sum() - xs_elem_sq * precisions
-    term_2 = xs_elem_sq.T @ precisions - xs_elem_sq * precisions
-    term_3 = xs_elem_sq.T @ precisions - xs_elem_sq * precisions
-    term_4 = num_samples / sigma_sq_m * xs_elem_sq
-    term_5 = num_samples / sigma_sq_k
-    return term_1 + term_2 - term_3 + term_4 + term_4
-
-
 def obj_matrix_form(precisions: torch.Tensor, xs: torch.Tensor, sigma_sq_k: float, sigma_sq_m: float):
     num_samples = xs.size(0)
     xs_elem_sq = xs ** 2
@@ -39,34 +14,51 @@ def obj_matrix_form(precisions: torch.Tensor, xs: torch.Tensor, sigma_sq_k: floa
 def grad_matrix_form(precisions: torch.Tensor, xs: torch.Tensor, sigma_sq_k: float, sigma_sq_m: float):
     num_samples = xs.size(0)
     xs_elem_sq = xs ** 2
-    first_quadr = xs_elem_sq.repeat((1, num_samples))
-    second_quadr = xs @ xs.T
+    # Gradient of the quadratic term is A + A^T = [ (x_1 - xs)^2  (x_2 - xs)**2 ... (x_n - xs)**2 ]
+    grad_mat = (xs - xs.T) ** 2
     linear = num_samples / sigma_sq_m * xs_elem_sq + num_samples / sigma_sq_k * torch.ones(xs.size())
-    asym = first_quadr.T @ precisions + first_quadr @ precisions
-    sym = second_quadr @ precisions
-    return asym + sym  # + linear
+    return grad_mat @ precisions + linear
 
 
-def grad_fn(x):
-    return torch.tensor([200 * x[0], 2 * x[1], 2 * (x[2] - 20)]).reshape(x.size(0), 1)
+def objective_template(precisions: torch.Tensor, xs: torch.Tensor, sigma_sq_k: float, sigma_sq_m: float):
+    """Reference implementation"""
+    xs_elem_sq = xs ** 2
+    num_samples = xs.size(0)
+    term_1 = (precisions * xs_elem_sq).sum() * precisions.sum()
+    term_2 = num_samples / sigma_sq_m * (precisions * xs_elem_sq).sum()
+    term_3 = num_samples / sigma_sq_k * precisions.sum()
+    term_4 = ((precisions * xs).sum()) ** 2
+    return term_1 + term_2 + term_3 - term_4
 
 
-def extreme_points():
-    return torch.tensor([[1, 0, 0], [0, 1, 0], [0, 0, 20]]).T
+def objective_gradient(precisions: torch.Tensor, xs: torch.Tensor, sigma_sq_k: float, sigma_sq_m: float):
+    """Reference implementation"""
+    xs_elem_sq = xs ** 2
+    num_samples = xs.size(0)
+    term_1 = xs_elem_sq * precisions.sum() - xs_elem_sq * precisions
+    term_2 = xs_elem_sq.T @ precisions - xs_elem_sq * precisions
+    term_3 = 2 * xs * (xs.T @ precisions - xs * precisions)
+    term_4 = num_samples / sigma_sq_m * xs_elem_sq
+    term_5 = num_samples / sigma_sq_k
+    return term_1 + term_2 - term_3 + term_4 + term_5
 
-def approx_step_len(alpha, search_dir, obj_fn, num_steps):
-    gammas = torch.linspace(0, 1, num_steps)
-    max_val = -1e9
-    max_gamma = 0.0
-    for gamma in gammas:
-        alpha_step = alpha + gamma * search_dir
-        tmp = obj_fn(alpha_step)
-        # print(f"gamma: {gamma}, fn: {tmp.item()}")
-        if tmp > max_val:
-            max_val = tmp
-            max_gamma = gamma
-    return max_gamma
 
 def opt_step_len(alpha, search_dir, quadr_mat, linear):
     scale = search_dir.T @ quadr_mat @ search_dir
     return (linear - quadr_mat @ alpha).T @ search_dir / scale
+
+
+# Grad check
+# xs = torch.randn((2,1))
+# precisions = torch.randn((2,1))
+# sigma_sq_k, sigma_sq_m = 1, 1
+# full = objective_gradient(precisions, xs, sigma_sq_k, sigma_sq_m)
+# mat = grad_matrix_form(precisions, xs, sigma_sq_k, sigma_sq_m)
+
+# Fn check
+# precisions = torch.randn((2,1))
+# #xs = torch.tensor([[2.0, 3]]).T
+# #precisions = torch.tensor([[1.0, 2]]).T
+# sigma_sq_k, sigma_sq_m = 1, 1
+# full = objective_template(precisions, xs, sigma_sq_k, sigma_sq_m)
+# mat = obj_matrix_form(precisions, xs, sigma_sq_k, sigma_sq_m)

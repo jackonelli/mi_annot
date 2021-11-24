@@ -20,11 +20,10 @@ def pseudo_frank_wolfe(
         grad_f = obj_grad_fn(alpha_k)
         extr_points_lin_val = grad_f.T @ search_dirs
         min_idx = extr_points_lin_val.argmax()
-        print(extr_points_lin_val)
         search_dir = extr_points[:, min_idx].reshape(alpha_k.size(0), 1) - alpha_k
         gamma = step_length_selector(alpha_k, search_dir)
         alpha_k += gamma * search_dir
-        alpha_store = torch.column_stack((alpha_store, alpha_k))  # Broadcast magic requires transpose.
+        alpha_store = torch.column_stack((alpha_store, alpha_k))
     return alpha_k, alpha_store
 
 
@@ -40,3 +39,16 @@ def isosceles_triangular_extreme_points(budget, num_samples):
         prot[i - 1] = budget
         extreme_points[:, i] = prot
     return extreme_points
+
+
+def approx_step_len(alpha, search_dir, obj_fn, num_steps):
+    gammas = torch.linspace(0, 1, num_steps)
+    max_val = -1e9
+    max_gamma = 0.0
+    for gamma in gammas:
+        alpha_step = alpha + gamma * search_dir
+        tmp = obj_fn(alpha_step)
+        if tmp > max_val:
+            max_val = tmp
+            max_gamma = gamma
+    return max_gamma

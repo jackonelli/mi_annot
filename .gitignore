@@ -10,5 +10,9 @@
 __pycache__
 .vim
 .hypothesis
+
 # Jupyter
 .ipynb_checkpoints
+
+# Results
+stored_models

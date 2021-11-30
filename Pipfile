@@ -13,6 +13,7 @@ hypothesis = "*"
 jupyter = "*"
 
 [packages]
+pygit2 = "*"
 torch = "*"
 numpy = "*"
 scipy = "*"
@@ -20,6 +21,9 @@ matplotlib = "*"
 jupyter = "*"
 tikzplotlib = "*"
 ipykernel = "*"
+torchvision = "*"
+kaggle = "*"
+timm = "*"
 
 [requires]
 python_version = "3.8"

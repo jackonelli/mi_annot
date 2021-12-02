@@ -2,8 +2,8 @@ import numpy as np
 from scipy.linalg import sqrtm
 import matplotlib.pyplot as plt
 
-class OneDimGaussian:
 
+class OneDimGaussian:
     def __init__(self, mean, sigma_sq):
         self.mean = mean
         self.sigma_sq = sigma_sq
@@ -11,8 +11,8 @@ class OneDimGaussian:
     def sample(self, num_samples):
         return np.random.normal(self.mean, np.sqrt(self.sigma_sq), num_samples)
 
-class MultivarGaussian:
 
+class MultivarGaussian:
     def __init__(self, mean, cov):
         self.mean = mean
         self.cov = cov
@@ -24,9 +24,10 @@ def mi_gaussian_gaussian(params_1, params_2):
 
 def onedim_gaussian_pdf(x, params):
     mu, sigma_sq = params
-    diff_sq = (x - mu)**2
-    factor = 1 / ( np.sqrt(2 * np.pi * sigma_sq ))
+    diff_sq = (x - mu) ** 2
+    factor = 1 / (np.sqrt(2 * np.pi * sigma_sq))
     return factor * np.exp(-diff_sq / (2 * sigma_sq))
+
 
 def plot_sigma_level(ax, mean, cov, level, label, color, resolution=50):
     fmt = "--"

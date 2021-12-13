@@ -13,6 +13,10 @@ class ExperimentConfig:
         self.commit_hash = current_commit_hash()
         self.timestamp = datetime.now()
 
+    def save(self):
+        with open("exp_conf.json", "w", encoding="utf-8") as f:
+            json.dump(self.__str__(), f, ensure_ascii=False, indent=4)
+
     def __str__(self):
         return json.dumps(self.__dict__, indent=4, default=str)
 

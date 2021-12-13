@@ -3,6 +3,7 @@ import numpy as np
 from torch.utils.data import Dataset
 from functools import partial
 import torch
+from src.utils.label_noise import symmetric_label_noise
 
 NUM_CLASSES = 1000
 FEATURE_DIM = 1536
@@ -11,10 +12,14 @@ FEATURE_DIM = 1536
 class DinoFeatures(Dataset):
     def __init__(self, dir_: Path, subset_ratio: float):
         self.dir = dir_
-        self.num_samples = len(list(self.dir.glob("*.npy")))
+        all_samples = list(self.dir.glob("*.npy"))
+        num_total_samples = len(all_samples)
+        self.num_samples = round(num_total_samples * subset_ratio)
+        self.samples = np.random.choice(num_total_samples, self.num_samples)
 
     def __getitem__(self, idx):
-        sample_path = self.dir / (str(idx) + ".npy")
+        global_idx = self.samples[idx]
+        sample_path = self.dir / (str(global_idx) + ".npy")
         sample = np.load(sample_path)
         label, feature = int(sample[0]), sample[1:]
         return (torch.tensor(feature), label)
@@ -28,7 +33,7 @@ class DinoFeatures(Dataset):
 
     @staticmethod
     def feature_dim():
-        return NUM_CLASSES
+        return FEATURE_DIM
 
 
 class NoisyLabels(Dataset):
@@ -39,19 +44,9 @@ class NoisyLabels(Dataset):
         self._label_distr = partial(symmetric_label_noise, annot_quality=annot_quality, num_classes=num_classes)
 
     def __getitem__(self, idx):
-        x, label = self._dataset.__getitem__(idx)
-        noisy_label = np.random.choice(self.num_classes, p=self._label_distr(label))
-        return x, noisy_label
+        x, true_label = self._dataset.__getitem__(idx)
+        noisy_label = np.random.choice(self.num_classes, p=self._label_distr(true_label))
+        return x, (noisy_label, true_label)
 
     def __len__(self):
         return self._dataset.__len__()
-
-
-def symmetric_label_noise(label: int, annot_quality: float, num_classes: int):
-    baseline = (1.0 - annot_quality) / num_classes * torch.ones((num_classes), dtype=torch.float64)
-    true_label = torch.zeros(baseline.size(), dtype=torch.float64)
-    true_label[label] = annot_quality
-    tmp = baseline + true_label
-    # # Numerical hack to make the probability vec sum to 1.
-    # tmp[-1] = 1.0 - tmp[:-1].sum()
-    return tmp / tmp.sum()

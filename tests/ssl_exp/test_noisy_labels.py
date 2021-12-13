@@ -1,10 +1,10 @@
 import unittest
 import torch
-from src.ssl_exp.data_loader import symmetric_label_noise
+from src.utils.label_noise import symmetric_label_noise
 
 
 class TestSymmetricLabelNoise(unittest.TestCase):
-    def est_perfect_quality(self):
+    def test_perfect_quality(self):
         annot_quality = 1.0  # Perfect quality
         num_classes = 3
         distr = symmetric_label_noise(0, annot_quality, num_classes)

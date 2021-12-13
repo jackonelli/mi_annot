@@ -15,4 +15,4 @@ __pycache__
 .ipynb_checkpoints
 
 # Results
-stored_models
+stored

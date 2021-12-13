@@ -35,7 +35,7 @@ def main():
 def gen_metrics(annot_quality, ratio, args):
     clean_train_set = DinoFeatures(args.data_path / "train", subset_ratio=ratio)
     num_classes = clean_train_set.num_classes()
-    clean_val_set = DinoFeatures(args.data_path / "val", subset_ratio=ratio)
+    clean_val_set = DinoFeatures(args.data_path / "val", subset_ratio=args.val_set_ratio)
     print(
         f"Using {len(clean_train_set)} training samples with quality {annot_quality}, {len(clean_val_set)} val. samples with quality 1.0"
     )
@@ -120,7 +120,7 @@ def validate_epoch(model, val_loader, metrics):
 
 def save_exp(exp_dir, model, train_losses, train_metrics, val_metrics, args):
     exp_dir.mkdir(exist_ok=True, parents=True)
-    ExperimentConfig(EXPERIMENT_NAME, args).save()
+    ExperimentConfig(EXPERIMENT_NAME, args).save(exp_dir)
     torch.save(model.state_dict(), exp_dir / "model")
     train_metrics.save(exp_dir, "train")
     val_metrics.save(exp_dir, "val")
@@ -132,7 +132,9 @@ def _parse_args():
     parser.add_argument("--batch_size", default=128, type=int, help="Batch size")
     parser.add_argument("--data_path", required=True, type=Path)
     parser.add_argument("--num_workers", default=10, type=int, help="Number of data loading workers per GPU.")
-    parser.add_argument("--val_freq", default=1, type=int, help="Epoch frequency for validation.")
+    parser.add_argument(
+        "--val_set_ratio", default=1.0, type=float, help="The ratio of full Imagenet to use for validation"
+    )
     parser.add_argument("--output_dir", default="stored", type=Path, help="Path to save logs and checkpoints")
     return parser.parse_args()
 

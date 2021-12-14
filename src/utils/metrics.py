@@ -12,24 +12,45 @@ class Metric(ABC):
         super().__init__()
         self.id = id_
         self._vals = list()
+        self._checkpoint_steps = [0]
+        self._checkpoints = list()
 
     def full_sample(self):
         return np.array(self._vals)
 
     def mean_and_std(self) -> Tuple[float, float]:
-        full_sample = self.full_sample()
-        mean = full_sample.mean()
-        std = full_sample.std()
-        return mean, std / np.sqrt(len(full_sample))
+        return self._mean_and_std(self.full_sample())
+
+    @staticmethod
+    def _mean_and_std(sample) -> Tuple[float, float]:
+        mean = sample.mean()
+        std = sample.std()
+        return mean, std / np.sqrt(len(sample))
 
     def add_sample(self, y_true: torch.Tensor, y_hat: torch.Tensor, x: Optional[torch.Tensor]):
         val = self.compute_metric(y_true, y_hat, x)
         self._vals.append(val)
 
+    def checkpoint(self):
+        sample = np.array(self._vals[self._checkpoint_steps[-1] :])
+        self._checkpoints.append(self._mean_and_std(sample))
+        self._checkpoint_steps.append(len(self._vals) - 1)
+
     def save(self, dir_: Path, prefix: str):
         vals = self.full_sample()
         filename = dir_ / f"{prefix}_{self.id}.csv"
-        np.savetxt(filename, vals)
+        np.savetxt(filename, vals, header=self.id, comments="", delimiter=",")
+
+    def save_checkpoints(self, dir_: Path, prefix: str, timesteps):
+        checkpoints = np.array(list(self.list_checkpoints()))
+        timesteps = np.array(timesteps)
+        data = np.column_stack((timesteps, checkpoints))
+        filename = dir_ / f"{prefix}_{self.id}_checkpoints.csv"
+        np.savetxt(filename, data, header="ext_ts,ts,mean,std", comments="", delimiter=",")
+
+    def list_checkpoints(self):
+        for ts, (mean, std) in zip(self._checkpoint_steps[1:], self._checkpoints):
+            yield (ts, mean, std)
 
     def last(self):
         return self._vals[-1]
@@ -51,14 +72,22 @@ class Metrics:
         for metric in self._metrics:
             metric.add_sample(y_true, y_hat, x)
 
+    def checkpoint(self):
+        for m in self._metrics:
+            m.checkpoint()
+
     def save(self, dir_: Path, prefix: str):
         for m in self._metrics:
             m.save(dir_, prefix)
 
+    def save_checkpoints(self, dir_: Path, prefix: str, timesteps):
+        for m in self._metrics:
+            m.save_checkpoints(dir_, prefix, timesteps)
+
     def summary(self):
         str_ = str()
         for met in self._metrics:
-            mean, _ = met.mean_and_std()
+            mean, _ = met._checkpoints[-1]
             str_ += f"{met.id}: {mean:.2f}, "
         return str_[:-2]
 

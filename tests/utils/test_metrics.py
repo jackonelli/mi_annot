@@ -1,6 +1,7 @@
 import unittest
-from abc import ABCMeta
+from pathlib import Path
 import torch
+import numpy as np
 from src.utils.metrics import Metrics, Metric, Accuracy, output_to_label, TopXAccuracy
 
 
@@ -32,6 +33,24 @@ class TestMetrics(unittest.TestCase):
         for metric in metrics:
             mean, std = metric.mean_and_std()
             self.assertAlmostEqual(mean, 0.75)
+
+
+class TestMetric(unittest.TestCase):
+    def test_checkpoints(self):
+        acc = Accuracy("acc")
+        timesteps = np.array([12, 18, 67])
+        for ts in range(len(timesteps)):
+            for _ in range(5):
+                y_true = torch.randint(0, 1, (4,))
+                y_hat = torch.randn((4,))
+                acc.add_sample(y_true, y_hat, None)
+            acc.checkpoint()
+        checkpoints = list(acc.list_checkpoints())
+        self.assertEqual(len(checkpoints), 3)
+
+        ch_with_ext_times = np.column_stack((timesteps, checkpoints))
+        self.assertEqual(ch_with_ext_times.shape, (3, 4))
+        # acc.save_checkpoints(Path.cwd(), "test_save_acc", timesteps)
 
 
 class TestAccuracy(unittest.TestCase):

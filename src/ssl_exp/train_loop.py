@@ -25,8 +25,8 @@ def main():
     args = _parse_args()
     cudnn.benchmark = True
 
-    alphas = np.array([0.9, 0.5])
-    ratios = np.array([0.1, 0.5])
+    alphas = np.array([0.1, 0.25, 0.5, 0.75, 1.0])
+    ratios = np.array([0.01, 0.1, 0.2, 0.5, 0.75])
     for alpha_idx, annot_quality in enumerate(alphas):
         for ratio_idx, ratio in enumerate(ratios):
             gen_metrics(annot_quality, ratio, args)
@@ -105,6 +105,8 @@ def train_epoch(model, train_loader, optimizer, loss_fn, metrics):
         optimizer.step()
         if batch_idx % 20 == 0:
             print(f"Batch {batch_idx}/{len(train_loader)}: Loss {round(loss.item(), 2)}, {metrics.last()}")
+    metrics.checkpoint()
+
     return np.array(batch_losses), metrics
 
 
@@ -115,6 +117,7 @@ def validate_epoch(model, val_loader, metrics):
         inp, true_label = inp.to(DEVICE), true_label.to(DEVICE)
         p_true = model.p_y_given_x(inp)
         metrics.add_sample(true_label, p_true, inp)
+    metrics.checkpoint()
     return metrics
 
 
@@ -123,7 +126,8 @@ def save_exp(exp_dir, model, train_losses, train_metrics, val_metrics, args):
     ExperimentConfig(EXPERIMENT_NAME, args).save(exp_dir)
     torch.save(model.state_dict(), exp_dir / "model")
     train_metrics.save(exp_dir, "train")
-    val_metrics.save(exp_dir, "val")
+    train_checkpoints = [timestep for (timestep, _, _) in train_metrics["nll"].list_checkpoints()]
+    val_metrics.save_checkpoints(exp_dir, "val", train_checkpoints)
 
 
 def _parse_args():

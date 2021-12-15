@@ -16,7 +16,7 @@ from src.utils.torch_helpers import device
 from src.utils.metrics import Metrics, Accuracy, TopXAccuracy, Nll
 from src.utils.exp import ExperimentConfig
 
-EXPERIMENT_NAME = "dino_ssl_linear_imagenet_1k"
+EXPERIMENT_NAME = "small_val_dino_ssl_linear_imagenet_1k"
 DEVICE = device()
 
 

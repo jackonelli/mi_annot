@@ -121,6 +121,25 @@ class Nll(Metric):
         return self._nll(torch.log(y_hat), y_true).item()
 
 
+class Entropy(Metric):
+    def __init__(self, id_):
+        super().__init__(id_)
+
+    @torch.no_grad()
+    def compute_metric(self, y_true: torch.Tensor, y_hat: torch.Tensor, _x: Optional[torch.Tensor]) -> float:
+        return self._nll(torch.log(y_hat), y_true).item()
+
+
+def prob_vec_entropy(x: torch.Tensor) -> float:
+    """Compute entropy of a probability vector
+
+    Args:
+        x (torch.Tensor): Tensor with shape (B, C)
+    """
+    tmp = x * torch.log(x)
+    return tmp.sum(dim=1).mean().item()
+
+
 class TopXAccuracy(Metric):
     def __init__(self, id_, rank):
         super().__init__(id_)

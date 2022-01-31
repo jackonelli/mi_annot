@@ -10,7 +10,7 @@ class TestSymmetricLabelNoise(unittest.TestCase):
         distr = symmetric_label_noise(0, annot_quality, num_classes)
         true_distr = torch.tensor([1.0, 0.0, 0.0], dtype=torch.float64)
         self.assertTrue(torch.allclose(distr, true_distr))
-        self.assertAlmostEqual(distr.sum(), 1.0)
+        self.assertAlmostEqual(distr.sum().item(), 1.0)
 
     def test_max_entropy(self):
         annot_quality = 0.0  # Perfect quality

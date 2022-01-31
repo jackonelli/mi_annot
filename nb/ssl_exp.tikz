@@ -1,0 +1,137 @@
+% This file was created with tikzplotlib v0.9.16.
+\begin{tikzpicture}
+
+\definecolor{color0}{rgb}{0.267004,0.004874,0.329415}
+\definecolor{color1}{rgb}{0.279574,0.170599,0.479997}
+\definecolor{color2}{rgb}{0.231674,0.318106,0.544834}
+\definecolor{color3}{rgb}{0.172719,0.448791,0.557885}
+\definecolor{color4}{rgb}{0.127568,0.566949,0.550556}
+\definecolor{color5}{rgb}{0.153894,0.680203,0.504172}
+\definecolor{color6}{rgb}{0.360741,0.785964,0.387814}
+\definecolor{color7}{rgb}{0.668054,0.861999,0.196293}
+\definecolor{color8}{rgb}{0.993248,0.906157,0.143936}
+
+\begin{axis}[
+tick align=outside,
+tick pos=left,
+x grid style={white!69.0196078431373!black},
+xlabel={train set ratio},
+xmin=0.01, xmax=0.75,
+xtick style={color=black},
+y grid style={white!69.0196078431373!black},
+ylabel={annot qual. alpha},
+ymin=0.1, ymax=1,
+ytick style={color=black}
+]
+\addplot [draw=color1, draw=none]
+table{%
+x  y
+0.114790860033913 1
+0.145787295906956 0.75
+0.2 0.614545495188385
+0.464793725097671 0.524754235976515
+};
+\addplot [draw=color1, draw=none]
+table{%
+x  y
+0.535419317536953 0.503341595866844
+0.547911839838413 0.5
+0.75 0.351019335625287
+};
+\addplot [draw=color2, draw=none]
+table{%
+x  y
+0.172706916835588 1
+0.2 0.883230776501724
+0.261148961710544 0.791551646871912
+};
+\addplot [draw=color2, draw=none]
+table{%
+x  y
+0.322512114737319 0.72879703173173
+0.5 0.616956936278404
+0.75 0.531249055023063
+};
+\addplot [draw=color3, draw=none]
+table{%
+x  y
+0.265259283962728 1
+0.4541332044405 0.75
+0.466220405500901 0.742383515537649
+};
+\addplot [draw=color3, draw=none]
+table{%
+x  y
+0.534436724418175 0.703897143511611
+0.75 0.596224801647793
+};
+\addplot [draw=color4, draw=none]
+table{%
+x  y
+0.388681667484062 1
+0.5 0.861190564254306
+0.557190803760956 0.787638042031817
+};
+\addplot [draw=color4, draw=none]
+table{%
+x  y
+0.62055443394078 0.731485702397326
+0.75 0.661200548272521
+};
+\addplot [draw=color5, draw=none]
+table{%
+x  y
+0.509151831006974 1
+0.676620569372826 0.787445553749104
+};
+\addplot [draw=color5, draw=none]
+table{%
+x  y
+0.740354236249696 0.731413662328833
+0.75 0.726176294897249
+};
+\addplot [draw=color6, draw=none]
+table{%
+x  y
+0.602471067348733 1
+0.720063769407062 0.857727016733036
+};
+\addplot [draw=color7, draw=none]
+table{%
+x  y
+0.695790303690492 1
+0.75 0.934412807249516
+};
+\draw (axis cs:0.5,0.512815827109487) node[
+  scale=0.5,
+  text=color1,
+  rotate=350.8
+]{6.25};
+\draw (axis cs:0.288863448899069,0.75) node[
+  scale=0.5,
+  text=color2,
+  rotate=331.4
+]{6.30};
+\draw (axis cs:0.5,0.721098045447323) node[
+  scale=0.5,
+  text=color3,
+  rotate=343.2
+]{6.35};
+\draw (axis cs:0.586456283866139,0.75) node[
+  scale=0.5,
+  text=color4,
+  rotate=334.7
+]{6.40};
+\draw (axis cs:0.706123408548304,0.75) node[
+  scale=0.5,
+  text=color5,
+  rotate=334.9
+]{6.45};
+\draw (axis cs:0.75,0.821507789181716) node[
+  scale=0.5,
+  text=color6,
+  rotate=327.1
+]{6.50};
+\end{axis}
+
+\end{tikzpicture}

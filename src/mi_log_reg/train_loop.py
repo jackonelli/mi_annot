@@ -2,6 +2,7 @@ import argparse
 from pathlib import Path
 import sys
 from time import time
+from functools import partial
 import numpy as np
 import torch
 import torch.nn as torch_nn
@@ -9,15 +10,17 @@ import torch.backends.cudnn as cudnn
 from torch.utils.data import DataLoader
 
 sys.path.append(str(Path.cwd()))
-from src.ssl_exp.data_loader import DinoFeatures
-from src.ssl_exp.model import LabelNoiseCorrectedClassifier, LinearClassifier
+from src.mi_log_reg.data_loader import MvnMultiClassData
+from src.mi_log_reg.model import Ensemble, LinearClassifier, LabelNoiseCorrectedClassifier
 from src.label_noise import SymmetricNoise, NoisyLabels
 from src.utils.torch_helpers import device
 from src.utils.metrics import Metrics, Accuracy, TopXAccuracy, Nll
 from src.utils.exp import ExperimentConfig
 
-EXPERIMENT_NAME = "small_val_dino_ssl_linear_imagenet_1k"
+EXPERIMENT_NAME = "mi_log_reg"
 DEVICE = device()
+FULL_TRAIN_SET_SIZE = 10000
+FULL_VAL_SET_SIZE = 200
 
 
 def main():
@@ -27,15 +30,19 @@ def main():
 
     alphas = np.array([0.1, 0.25, 0.5, 0.75, 1.0])
     ratios = np.array([0.01, 0.1, 0.2, 0.5, 0.75])
-    for alpha_idx, annot_quality in enumerate(alphas):
-        for ratio_idx, ratio in enumerate(ratios):
-            gen_metrics(annot_quality, ratio, args)
+    mis = torch.empty((len(ratios), len(alphas)))
+    noisy_mis = torch.empty((len(ratios), len(alphas)))
+    for ratio_idx, ratio in enumerate(ratios):
+        for alpha_idx, annot_quality in enumerate(alphas):
+            mi, noisy_mi = gen_metrics(annot_quality, ratio, args)
+            mis[ratio_idx, alpha_idx] = mi
+    torch.save(mis, args.output_dir / EXPERIMENT_NAME / "mis.th")
+    torch.save(noisy_mis, args.output_dir / EXPERIMENT_NAME / "noisy_mis.th")
 
 
 def gen_metrics(annot_quality, ratio, args):
-    clean_train_set = DinoFeatures(args.data_path / "train", subset_ratio=ratio)
-    num_classes = clean_train_set.num_classes()
-    clean_val_set = DinoFeatures(args.data_path / "val", subset_ratio=args.val_set_ratio)
+    clean_train_set, clean_val_set = gen_data(ratio, args.val_set_ratio)
+    num_classes, feature_dim = clean_train_set.num_classes(), clean_train_set.feature_dim()
     print(
         f"Using {len(clean_train_set)} training samples with quality {annot_quality}, {len(clean_val_set)} val. samples with quality 1.0"
     )
@@ -53,41 +60,49 @@ def gen_metrics(annot_quality, ratio, args):
         num_workers=args.num_workers,
     )
 
-    lin_class = LinearClassifier(clean_train_set.feature_dim(), num_classes)
     label_noise_corr = SymmetricNoise(annot_quality, num_classes)
-    model = LabelNoiseCorrectedClassifier(lin_class, label_noise_corr)
-    model.to(DEVICE)
+    ensemble = Ensemble(LinearClassifier, label_noise_corr, feature_dim, num_classes, args.ens_size)
+    ensemble.to(DEVICE)
 
-    optimizer = torch.optim.SGD(
-        model.parameters(),
+    optimizer = partial(
+        torch.optim.SGD,
         lr=0.001 * args.batch_size / 256,
         momentum=0.9,
         weight_decay=0,  # we do not apply weight decay
     )
     loss_fn = torch_nn.NLLLoss()
 
-    train_metrics = Metrics([Accuracy("acc"), TopXAccuracy("top-5-acc", 5), Nll("nll")])
-    val_metrics = Metrics([Accuracy("acc"), TopXAccuracy("top-5-acc", 5), Nll("nll")])
+    train_metrics = Metrics([Accuracy("acc"), Nll("nll")])
+    val_metrics = Metrics([Accuracy("acc"), Nll("nll")])
 
-    model, train_losses, train_metrics, val_metrics = train(
-        model, train_loader, val_loader, optimizer, loss_fn, train_metrics, val_metrics, args.epochs
+    ensemble, train_losses, train_metrics, val_metrics = train_ensemble(
+        ensemble, train_loader, val_loader, optimizer, loss_fn, train_metrics, val_metrics, args.epochs
     )
-    sub_exp = f"annot_quality_{annot_quality}_ratio_{ratio}"
-    save_exp(args.output_dir / EXPERIMENT_NAME / sub_exp, model, train_losses, train_metrics, val_metrics, args)
+    mi = ensemble.mi_approx(train_loader)
+    noisy_mi = ensemble.noisy_mi_approx(train_loader)
+    print(f"MI: {mi}")
+    # sub_exp = f"annot_quality_{annot_quality}_ratio_{ratio}"
+    # save_exp(args.output_dir / EXPERIMENT_NAME / sub_exp, model, train_losses, train_metrics, val_metrics, args)
+    return mi, noisy_mi
 
 
-def train(model, train_loader, val_loader, optimizer, loss_fn, train_metrics, val_metrics, num_epochs):
+def train_ensemble(
+    ensemble, train_loader, val_loader, optimizer_template, loss_fn, train_metrics, val_metrics, num_epochs
+):
     print("Starting training")
     train_losses = []
-    for epoch in np.arange(1, num_epochs + 1):
-        epoch_start = time()
-        batch_losses, train_metrics = train_epoch(model, train_loader, optimizer, loss_fn, train_metrics)
-        train_losses.append(np.array(batch_losses))
-        val_metrics = validate_epoch(model, val_loader, val_metrics)
-        epoch_end = time()
-        epoch_time = epoch_end - epoch_start
-        print(f"Epoch {epoch}/{num_epochs}, time: {epoch_time:.1f}s. Val: {val_metrics.summary()}")
-    return model, train_losses, train_metrics, val_metrics
+    for ens_idx, model in enumerate(ensemble._members):
+        print(f"Ensemble member {ens_idx}")
+        optimizer = optimizer_template(model.parameters())
+        for epoch in np.arange(1, num_epochs + 1):
+            epoch_start = time()
+            batch_losses, train_metrics = train_epoch(model, train_loader, optimizer, loss_fn, train_metrics)
+            train_losses.append(np.array(batch_losses))
+            val_metrics = validate_epoch(model, val_loader, val_metrics)
+            epoch_end = time()
+            epoch_time = epoch_end - epoch_start
+            print(f"Epoch {epoch}/{num_epochs}, time: {epoch_time:.1f}s. Val: {val_metrics.summary()}")
+    return ensemble, train_losses, train_metrics, val_metrics
 
 
 def train_epoch(model, train_loader, optimizer, loss_fn, metrics):
@@ -108,6 +123,23 @@ def train_epoch(model, train_loader, optimizer, loss_fn, metrics):
     metrics.checkpoint()
 
     return np.array(batch_losses), metrics
+
+
+def gen_data(train_set_ratio: float, val_set_ratio: float):
+    dist = 5
+    c_1 = (
+        torch.zeros(
+            2,
+        ),
+        torch.eye(2),
+    )
+    c_2 = (dist * torch.tensor([1.0, 0]), torch.eye(2))
+    c_3 = (dist * torch.tensor([0.5, 0.5]), torch.eye(2))
+
+    clusters = [c_1, c_2, c_3]
+    train_data = MvnMultiClassData(round(FULL_TRAIN_SET_SIZE * train_set_ratio), clusters, 0)
+    val_data = MvnMultiClassData(round(FULL_VAL_SET_SIZE * val_set_ratio), clusters, 0)
+    return train_data, val_data
 
 
 @torch.no_grad()
@@ -132,9 +164,9 @@ def save_exp(exp_dir, model, train_losses, train_metrics, val_metrics, args):
 
 def _parse_args():
     parser = argparse.ArgumentParser("Training with noisy labels on DINO Imagenet features")
-    parser.add_argument("--epochs", default=100, type=int, help="Number of epochs of training.")
-    parser.add_argument("--batch_size", default=128, type=int, help="Batch size")
-    parser.add_argument("--data_path", required=True, type=Path)
+    parser.add_argument("--ens_size", default=10, type=int, help="Number of ensemble members")
+    parser.add_argument("--epochs", default=10, type=int, help="Number of epochs of training.")
+    parser.add_argument("--batch_size", default=1000, type=int, help="Batch size")
     parser.add_argument("--num_workers", default=10, type=int, help="Number of data loading workers per GPU.")
     parser.add_argument(
         "--val_set_ratio", default=1.0, type=float, help="The ratio of full Imagenet to use for validation"

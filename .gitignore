@@ -13,6 +13,7 @@ __pycache__
 
 # Jupyter
 .ipynb_checkpoints
+Untitled*.ipynb
 
 # Results
 stored

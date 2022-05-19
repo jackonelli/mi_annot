@@ -15,5 +15,11 @@ __pycache__
 .ipynb_checkpoints
 Untitled*.ipynb
 
+# Output
+*.tikz
+*.data
+*.csv
+*.th
+
 # Results
 stored

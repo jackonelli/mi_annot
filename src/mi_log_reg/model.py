@@ -5,7 +5,6 @@ import torch.nn as torch_nn
 
 sys.path.append(str(Path.cwd()))
 from src.label_noise import LabelNoiseCorrector
-from src.utils.torch_helpers import device as torch_device
 
 
 class LinearClassifier(torch_nn.Module):
